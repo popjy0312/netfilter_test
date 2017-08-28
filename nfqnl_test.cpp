@@ -56,7 +56,15 @@ void urlParse(char* fullUrl, char* url){
         }
     }
     else{
-        memset(url, 0, MAX_URL_LEN);
+        if(sscanf(fullUrl,"%99[^:]:%d/%99[^\n]", url, &port, page) != 3){
+            if(sscanf(fullUrl, "%99[^/]/%99[^\n]", url, page) != 2){
+                if(sscanf(fullUrl, "%99[^:]:%d", url, &port) != 2){
+                    if(sscanf(fullUrl, "%99[^/]/", url) != 1){
+                        sscanf(fullUrl, "%99[^\n]\n",url);
+                    }
+                }
+            }
+        }
     }
 }
 
