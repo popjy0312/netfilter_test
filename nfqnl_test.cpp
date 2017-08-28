@@ -12,7 +12,42 @@
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
+#include <set>
+
+#define MAX_URL_LEN 30
+
 using namespace std;
+
+struct datas{
+    char url[MAX_URL_LEN];
+
+    bool operator < (const struct datas& tmp)const{
+        return memcmp(tmp.url, url, MAX_URL_LEN);
+    }
+};
+
+set<struct datas> s;
+
+void initSet(){
+    FILE* f;
+    u_int32_t ret;
+    char strtmp[MAX_URL_LEN];
+    struct datas data;
+
+    if( (f= fopen("filter_lists.txt","r")) == NULL){
+        printf("File Open Fail\n");
+        exit(1);
+    }
+
+    while( (ret = fscanf(f, "%s", strtmp)) != EOF){
+        memset(data.url, 0, MAX_URL_LEN);
+        memcpy(data.url, strtmp, strlen(strtmp));
+        s.insert(data);
+        printf("Insert data %s\n", strtmp);
+    }
+
+    fclose(f);
+}
 
 void parseIP(unsigned char *data, char *pdropFlag){
     struct ip *pip = (struct ip*)data;
@@ -20,6 +55,8 @@ void parseIP(unsigned char *data, char *pdropFlag){
     unsigned char *phttp;
     u_int32_t httpLen;
     u_int32_t idx = 0;
+    u_int32_t url_fin;
+    struct datas urldata;
 
     if (pip->ip_p == IPPROTO_TCP){
         ptcp_hdr = (struct tcphdr*)(data + pip->ip_hl*4);
@@ -28,9 +65,21 @@ void parseIP(unsigned char *data, char *pdropFlag){
 
         for(idx = 0;idx < httpLen;idx++){
             if(!memcmp( phttp + idx , "Host: ", 6)){
-                printf("Host!\n");
                 idx += 6;
-                printf("%s",phttp + idx);
+
+                for(url_fin = idx; url_fin < httpLen; url_fin++){
+                    if( *(phttp + url_fin) == '\r')
+                        break;
+                }
+
+                memset(urldata.url, 0, MAX_URL_LEN);
+                memcpy(urldata.url, phttp + idx, url_fin - idx);
+                printf("\n###########################\n%s\n##############################\n",urldata.url);
+
+                if(s.find(urldata) != s.end())
+                    *pdropFlag = 1;
+                    return;
+
                 break;
             }
         }
@@ -153,6 +202,8 @@ int main(int argc, char **argv)
     }
 
     fd = nfq_fd(h);
+
+    initSet();
 
     for (;;) {
         if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
