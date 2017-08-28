@@ -1,15 +1,46 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <linux/types.h>
 #include <linux/netfilter.h>        /* for NF_ACCEPT */
 #include <errno.h>
 
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
+using namespace std;
+
+void parseIP(unsigned char *data, char *pdropFlag){
+    struct ip *pip = (struct ip*)data;
+    struct tcphdr* ptcp_hdr;
+    unsigned char *phttp;
+    u_int32_t httpLen;
+    u_int32_t idx = 0;
+
+    if (pip->ip_p == IPPROTO_TCP){
+        ptcp_hdr = (struct tcphdr*)(data + pip->ip_hl*4);
+        phttp = (unsigned char*)(data + pip->ip_hl*4 + ptcp_hdr->doff*4);
+        httpLen = (uint32_t)htons(pip->ip_len) - (uint32_t)pip->ip_hl*4-(uint32_t)ptcp_hdr->doff*4;
+
+        for(idx = 0;idx < httpLen;idx++){
+            if(!memcmp( phttp + idx , "Host: ", 6)){
+                printf("Host!\n");
+                idx += 6;
+                printf("%s",phttp + idx);
+                break;
+            }
+        }
+    }
+
+    *pdropFlag = 0;
+}
+
 /* returns packet id */
-static u_int32_t print_pkt (struct nfq_data *tb)
+static u_int32_t print_pkt (struct nfq_data *tb, char *pdropFlag)
 {
     int id = 0;
     struct nfqnl_msg_packet_hdr *ph;
@@ -58,6 +89,7 @@ static u_int32_t print_pkt (struct nfq_data *tb)
     if (ret >= 0)
         printf("payload_len=%d ", ret);
 
+    parseIP(data, pdropFlag);
     fputc('\n', stdout);
 
     return id;
@@ -67,9 +99,16 @@ static u_int32_t print_pkt (struct nfq_data *tb)
 static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
           struct nfq_data *nfa, void *data)
 {
-    u_int32_t id = print_pkt(nfa);
-    printf("entering callback\n");
-    return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+    char dropFlag = 0;
+    u_int32_t id = print_pkt(nfa, &dropFlag);
+    if(dropFlag == 1){
+        printf("Drop!\n");
+        return nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+    }
+    else{
+        printf("entering callback\n");
+        return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
+    }
 }
 
 int main(int argc, char **argv)
