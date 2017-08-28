@@ -15,6 +15,7 @@
 #include <set>
 
 #define MAX_URL_LEN 30
+#define MAX_PAGE_LEN 100
 
 using namespace std;
 
@@ -22,16 +23,48 @@ struct datas{
     char url[MAX_URL_LEN];
 
     bool operator < (const struct datas& tmp)const{
-        return memcmp(tmp.url, url, MAX_URL_LEN);
+        return (memcmp(tmp.url, url, MAX_URL_LEN) > 0);
     }
 };
 
 set<struct datas> s;
 
+void urlParse(char* fullUrl, char* url){
+    u_int32_t port;
+    char page[MAX_PAGE_LEN];
+
+    if(!memcmp(fullUrl, "https", 5)){
+        if(sscanf(fullUrl,"https://%99[^:]:%d/%99[^\n]", url, &port, page) != 3){
+            if(sscanf(fullUrl, "https://%99[^/]/%99[^\n]", url, page) != 2){
+                if(sscanf(fullUrl, "https://%99[^:]:%d", url, &port) != 2){
+                    if(sscanf(fullUrl, "https://%99[^/]/", url) != 1){
+                        sscanf(fullUrl, "%99[^\n]\n",url);
+                    }
+                }
+            }
+        }
+    }
+    else if(!memcmp(fullUrl, "http", 4)){
+        if(sscanf(fullUrl,"http://%99[^:]:%d/%99[^\n]", url, &port, page) != 3){
+            if(sscanf(fullUrl, "http://%99[^/]/%99[^\n]", url, page) != 2){
+                if(sscanf(fullUrl, "http://%99[^:]:%d", url, &port) != 2){
+                    if(sscanf(fullUrl, "http://%99[^/]/", url) != 1){
+                        sscanf(fullUrl, "%99[^\n]\n",url);
+                    }
+                }
+            }
+        }
+    }
+    else{
+        memset(url, 0, MAX_URL_LEN);
+    }
+}
+
 void initSet(){
     FILE* f;
     u_int32_t ret;
     char strtmp[MAX_URL_LEN];
+    char strtmp2[MAX_URL_LEN];
     struct datas data;
 
     if( (f= fopen("filter_lists.txt","r")) == NULL){
@@ -41,9 +74,12 @@ void initSet(){
 
     while( (ret = fscanf(f, "%s", strtmp)) != EOF){
         memset(data.url, 0, MAX_URL_LEN);
-        memcpy(data.url, strtmp, strlen(strtmp));
+        memset(strtmp2, 0, MAX_URL_LEN);
+        urlParse(strtmp, strtmp2);
+        memcpy(data.url, strtmp2, strlen(strtmp2));
         s.insert(data);
-        printf("Insert data %s\n", strtmp);
+        printf("Insert data %s\n", strtmp2);
+        printf("Set Size: %d\n",(u_int32_t)s.size());
     }
 
     fclose(f);
