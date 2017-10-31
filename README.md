@@ -4,6 +4,13 @@ BoB 6기 취약점트랙 정주영.
 
 이경문멘토님 과제.
 
+```sh
+# iptables -A OUTPUT -p txp -j NFQUEUE
+# ./nfqnl_test
+```
+
+
+
 ## [리포트] 
 iptables, netfilter를 이용하여 간단한 웹 방화벽을 구현하라.
 

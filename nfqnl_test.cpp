@@ -14,7 +14,7 @@
 
 #include <set>
 
-#define MAX_URL_LEN 30
+#define MAX_URL_LEN 100
 #define MAX_PAGE_LEN 100
 
 using namespace std;
@@ -75,7 +75,8 @@ void initSet(){
     char strtmp2[MAX_URL_LEN];
     struct datas data;
 
-    if( (f= fopen("filter_lists.txt","r")) == NULL){
+    //if( (f= fopen("filter_lists.txt","r")) == NULL){
+    if( (f= fopen("top-1m.txt","r")) == NULL){
         printf("File Open Fail\n");
         exit(1);
     }
