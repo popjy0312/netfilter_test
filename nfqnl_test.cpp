@@ -23,7 +23,7 @@ struct datas{
     char url[MAX_URL_LEN];
 
     bool operator < (const struct datas& tmp)const{
-        return (memcmp(tmp.url, url, MAX_URL_LEN) > 0);
+        return (memcmp(url, tmp.url, MAX_URL_LEN) < 0);
     }
 };
 
